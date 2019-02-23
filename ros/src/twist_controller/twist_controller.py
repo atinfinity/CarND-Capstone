@@ -40,7 +40,6 @@ class Controller(object):
             return 0., 0., 0.
 
         current_vel = self.vel_lpf.filt(current_vel)
-        #rospy.logwarn("dbw_enabled: {0}".format(dbw_enabled))
         steering = self.yaw_controller.get_steering(linear_vel, angular_vel, current_vel)
 
         vel_error = linear_vel - current_vel
