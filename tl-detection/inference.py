@@ -14,6 +14,15 @@ from utils import label_map_util
 from utils import visualization_utils as vis_util
 import time
 
+flags = tf.app.flags
+flags.DEFINE_string('graph', 'frozen_model/frozen_inference_graph.pb', 'Path of the TensorFlow Graph.')
+flags.DEFINE_string('label', 'data/udacity_label_map.pbtxt', 'Path of the Label file.')
+flags.DEFINE_string('image_dir', 'testimage', 'Directory of test image.')
+flags.DEFINE_string('result_dir', 'result', 'Directory of result image.')
+FLAGS = flags.FLAGS
+
+NUM_CLASSES = 4
+
 def load_graph(graph_file):
     """Loads a frozen inference graph"""
     graph = tf.Graph()
@@ -30,24 +39,16 @@ def load_image_into_numpy_array(image):
     return np.array(image.getdata()).reshape((im_height, im_width, 3)).astype(np.uint8)
 
 
-PATH_TO_GRAPH = r'frozen_model/frozen_inference_graph.pb'
-PATH_TO_LABELS = r'data/udacity_label_map.pbtxt'
-NUM_CLASSES = 4
-
-detection_graph = load_graph(PATH_TO_GRAPH)
-
-label_map = label_map_util.load_labelmap(PATH_TO_LABELS)
+detection_graph = load_graph(FLAGS.graph)
+label_map = label_map_util.load_labelmap(FLAGS.label)
 categories = label_map_util.convert_label_map_to_categories(label_map, max_num_classes=NUM_CLASSES, use_display_name=True)
 category_index = label_map_util.create_category_index(categories)
-print(category_index)
+print("category_index: " + str(category_index))
 
 IMAGE_SIZE = (12, 8)
 
-TEST_IMAGES_DIR = 'testimage'
-EXTENSION = '*.*'
-print(os.path.join(TEST_IMAGES_DIR, EXTENSION))
-TEST_IMAGE_PATHS = glob(os.path.join(TEST_IMAGES_DIR, EXTENSION))
-print("number of test images:", len(TEST_IMAGE_PATHS))
+TEST_IMAGE_PATHS = glob(os.path.join(FLAGS.image_dir, '*.*'))
+print("number of test images: ", len(TEST_IMAGE_PATHS))
 
 with detection_graph.as_default():
     with tf.Session(graph=detection_graph) as sess:
@@ -69,8 +70,8 @@ with detection_graph.as_default():
                 feed_dict={image_tensor: image_expanded})
 
             end = time.time()
-            print("inference time = ", (end - start) * 1000) 
-            
+            print("inference time: " + str((end - start) * 1000))
+
             vis_util.visualize_boxes_and_labels_on_image_array(
                 image_np, 
                 np.squeeze(boxes),
@@ -84,4 +85,4 @@ with detection_graph.as_default():
             plt.imshow(image_np)
 
             basename = os.path.basename(img_path)
-            plt.savefig('result/' + basename)
+            plt.savefig(FLAGS.result_dir + '/' + basename)
