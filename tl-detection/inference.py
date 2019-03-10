@@ -22,6 +22,7 @@ flags.DEFINE_string('result_dir', 'result', 'Directory of result image.')
 FLAGS = flags.FLAGS
 
 NUM_CLASSES = 4
+IMAGE_SIZE = (12, 8)
 
 def load_graph(graph_file):
     """Loads a frozen inference graph"""
@@ -45,8 +46,6 @@ categories = label_map_util.convert_label_map_to_categories(label_map, max_num_c
 category_index = label_map_util.create_category_index(categories)
 print("category_index: " + str(category_index))
 
-IMAGE_SIZE = (12, 8)
-
 TEST_IMAGE_PATHS = glob(os.path.join(FLAGS.image_dir, '*.*'))
 print("number of test images: ", len(TEST_IMAGE_PATHS))
 
@@ -57,12 +56,12 @@ with detection_graph.as_default():
         detect_scores = detection_graph.get_tensor_by_name('detection_scores:0')
         detect_classes = detection_graph.get_tensor_by_name('detection_classes:0')
         num_detections = detection_graph.get_tensor_by_name('num_detections:0')
-        
+
         for img_path in TEST_IMAGE_PATHS:
             image = Image.open(img_path)
             image_np = load_image_into_numpy_array(image)
             image_expanded = np.expand_dims(image_np, axis=0)
-            
+
             start = time.time()
 
             (boxes, scores, classes, num) = sess.run(
@@ -71,6 +70,10 @@ with detection_graph.as_default():
 
             end = time.time()
             print("inference time: " + str((end - start) * 1000))
+
+            classes = np.squeeze(classes).astype(np.int32)
+            scores = np.squeeze(scores)
+            print("CLASSES: " + str(classes[0]) + ", SCORES: " + str(scores[0]))
 
             vis_util.visualize_boxes_and_labels_on_image_array(
                 image_np, 
