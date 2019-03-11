@@ -1,6 +1,6 @@
 This is the project repo for the final project of the Udacity Self-Driving Car Nanodegree: Programming a Real Self-Driving Car. For more information about the project, see the project introduction [here](https://classroom.udacity.com/nanodegrees/nd013/parts/6047fe34-d93c-4f50-8336-b70ef10cb4b2/modules/e1a23b06-329a-4684-a717-ad476f0d8dff/lessons/462c933d-9f24-42d3-8bdc-a08a5fc866e4/concepts/5ab4b122-83e6-436d-850f-9f4d26627fd9).
 
-Please use **one** of the two installation options, either native **or** docker installation.
+Please use native installation.
 
 ### Native Installation
 
@@ -19,56 +19,75 @@ Please use **one** of the two installation options, either native **or** docker 
   * Use this option to install the SDK on a workstation that already has ROS installed: [One Line SDK Install (binary)](https://bitbucket.org/DataspeedInc/dbw_mkz_ros/src/81e63fcc335d7b64139d7482017d6a97b405e250/ROS_SETUP.md?fileviewer=file-view-default)
 * Download the [Udacity Simulator](https://github.com/udacity/CarND-Capstone/releases).
 
-### Docker Installation
-[Install Docker](https://docs.docker.com/engine/installation/)
-
-Build the docker container
-```bash
-docker build . -t capstone
-```
-
-Run the docker file
-```bash
-docker run -p 4567:4567 -v $PWD:/capstone -v /tmp/log:/root/.ros/ --rm -it capstone
-```
-
-### Port Forwarding
-To set up port forwarding, please refer to the [instructions from term 2](https://classroom.udacity.com/nanodegrees/nd013/parts/40f38239-66b6-46ec-ae68-03afd8a601c8/modules/0949fca6-b379-42af-a919-ee50aa304e6a/lessons/f758c44c-5e40-4e01-93b5-1a82aa4e044f/concepts/16cf4a78-4fc7-49e1-8621-3450ca938b77)
 
 ### Usage
-
-1. Clone the project repository
+1. Install dependencies
 ```bash
-git clone https://github.com/udacity/CarND-Capstone.git
+$ sudo apt-get install libprotobuf-dev libprotoc-dev ros-kinetic-dbw-mkz-msgs
+$ sudo pip install eventlet==0.19.0
+$ sudo pip install Flask==0.11.1
+$ sudo pip install python-socketio==1.6.1
+$ sudo pip install attrdict==2.0.0
+$ sudo pip install utils
+$ sudo pip install tensorflow-gpu==1.13.1
 ```
 
-2. Install python dependencies
+2. Install protobuf-compiler
 ```bash
-cd CarND-Capstone
-pip install -r requirements.txt
+$ wget https://github.com/protocolbuffers/protobuf/releases/download/v3.7.0/protobuf-all-3.7.0.tar.gz
+$ tar xfvz protobuf-all-3.7.0.tar.gz
+$ cd protobuf-3.7.0
+$ ./configure
+$ make
+$ sudo make install
+$ sudo ldconfig
 ```
-3. Make and run styx
-```bash
-cd ros
-catkin_make
-source devel/setup.sh
-roslaunch launch/styx.launch
-```
-4. Run the simulator
 
-### Real world testing
-1. Download [training bag](https://s3-us-west-1.amazonaws.com/udacity-selfdrivingcar/traffic_light_bag_file.zip) that was recorded on the Udacity self-driving car.
-2. Unzip the file
+3. Install tensorflow/models
 ```bash
-unzip traffic_light_bag_file.zip
+$ git clone -b v1.13.0 https://github.com/tensorflow/models.git
+$ cd models/research
+$ protoc object_detection/protos/*.proto --python_out=.
+$ export PYTHONPATH=/home/dandelion/dev/models/research:/home/dandelion/dev/models/research/slim:/home/dandelion/dev/models/research/object_detection:${PYTHONPATH}
 ```
-3. Play the bag file
+
+4. Clone the project repository
 ```bash
-rosbag play -l traffic_light_bag_file/traffic_light_training.bag
+https://github.com/atinfinity/CarND-Capstone.git
 ```
-4. Launch your project in site mode
+
+5. Make and run styx
 ```bash
-cd CarND-Capstone/ros
-roslaunch launch/site.launch
+$ cd CarND-Capstone/ros
+$ catkin_make
+$ source devel/setup.sh
+$ roslaunch launch/styx.launch
 ```
-5. Confirm that traffic light detection works on real life images
+
+6. Run the simulator
+
+### Training
+- I made [training script](https://github.com/atinfinity/CarND-Capstone/blob/master/tl-detection/train.py) to detect and classify traffic light.
+- I used [Tensorflow Object Detection API](https://github.com/tensorflow/models/tree/master/research/object_detection).
+- I choiced `ssd_mobilenet_v2_coco` from [detection_model_zoo](https://github.com/tensorflow/models/blob/master/research/object_detection/g3doc/detection_model_zoo.md) as `fine_tune_checkpoint`. Because, this network model is lightweight and suitable for real time processing.
+
+#### Dataset
+I used [this dataset](https://github.com/alex-lechner/Traffic-Light-Classification#1-the-lazy-approach) to train the model of object detection.
+
+#### Dockerfile
+I make [Dockerfile](https://github.com/atinfinity/CarND-Capstone/blob/master/tl-detection/Dockerfile) to train the model of object detection.
+
+#### Create TFRecord
+```bash
+$ python create_tf_record.py --data_dir=simulator_dataset_rgb/Green/,simulator_dataset_rgb/Red/,simulator_dataset_rgb/Yellow/ --label_map_path=data/udacity_label_map.pbtxt --output_path=data/train.record
+```
+
+#### Training
+```bash
+$ python train.py --logtostderr --train_dir=./model --pipeline_config_path=config/ssd_inception_v2_coco.config
+```
+
+#### Export frozen graph
+```bash
+$ python export_inference_graph.py --input_type=image_tensor --pipeline_config_path=config/ssd_mobilenet_v2_coco.config --trained_checkpoint_prefix=model/model.ckpt-200000 --output_directory=frozen_model/
+```
